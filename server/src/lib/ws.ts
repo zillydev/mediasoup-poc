@@ -53,7 +53,6 @@ const websocketconnection = async (websock: WebSocket.Server) => {
 }
 
 const  getRouterRtpCapabilities = (ws: WebSocket, event: any) => {
-    console.log('getRouterRtpCapabilities');
     send(ws, 'routerRtpCapabilities', mediasoupRouter.rtpCapabilities);
 }
 
@@ -100,8 +99,6 @@ const resume = async (ws: WebSocket) => {
 }
 
 const consume = async (ws: WebSocket, event: any) => {
-    console.log(`codecs: ${JSON.stringify(event.rtpCapabilities)}`);
-    // let t = { rtpCapabilities: event.rtpCapabilities };
     const res = await createConsumer(producer, event.rtpCapabilities);
     send(ws, 'consumed', res);
 }
@@ -125,18 +122,17 @@ const send = (ws: WebSocket, type: string, msg: any) => {
 }
 
 const createConsumer = async (producer: Producer, rtpCapabilities: any) => {
-    /* if (!mediasoupRouter.canConsume({ producerId: producer.id, rtpCapabilities })) {
+    if (!mediasoupRouter.canConsume({ producerId: producer.id, rtpCapabilities })) {
         console.error('can not consume');
         return;
-    } */
+    }
     consumer = await consumerTransport.consume({
         producerId: producer.id,
         rtpCapabilities,
         paused: producer.kind === 'video',
     });
-    console.log(`consumer: ${consumer.id}`);
 
-    //implement simulcast
+    //TODO: implement simulcast
 
     return {
         producerId: producer.id,

@@ -1,12 +1,8 @@
 const mediasoup = require('mediasoup-client');
-const uuidv4 = require('uuid');
 
 const websocketURL = 'ws://localhost:8000/ws';
 
-const APP_ID = "d71fc74e8f6f4f59a3887902bcaeb1e7"
-const TOKEN = "007eJxTYPgXvGpRmvPP/0+s7lvs2bGxXUz64YwdwbaVkg2LPNpdzigpMKSYG6Ylm5ukWqSZpZmkmVomGltYmFsaGCUlJ6YmGaaaC6WzpDUEMjLo6fgzMEIhiM/CkJuYmcfAAACpQh8b"
-const APP_CERTIFICATE = "5ced2d504ae94850add338b253aadf64"
-const CHANNEL = "main"
+const { APP_ID, CHANNEL, TOKEN } = require('./config.js');
 
 const client = AgoraRTC.createClient({mode:'rtc', codec:'vp8'})
 
@@ -18,7 +14,6 @@ let remoteVideo;
 let testVideo;
 let testAudio;
 
-let producer;
 let consumerTransport;
 let remoteStream;
 
@@ -58,7 +53,6 @@ let handleUserJoined = async (user, mediaType) => {
 }
 
 async function start() {
-    // await joinStream()
     const message = {
         type: 'createProducerTransport',
         forceTcp: false,
@@ -104,10 +98,8 @@ const createSocketConnection = () => {
                 onConsumerTransport(message.data);
                 break;
             case 'resumed':
-                console.log('Consumer resumed');
                 break;
             case 'consumed':
-                console.log('Consumed');
                 onConsumed(message.data);
                 break;
             default:
@@ -143,7 +135,6 @@ const onProducerTransport = async (data) => {
     });
 
     transport.on('produce', async ({ kind, rtpParameters }, callback, errback) => {
-        console.log('Produce event:', kind, rtpParameters);
         const message = {
             type: 'produce',
             transportId: transport.id,
@@ -168,7 +159,6 @@ const onProducerTransport = async (data) => {
             case 'connected':
                 localVideo.srcObject = stream;
                 testAudio.play()
-                // stream.play(localVideo)
                 console.log('Producer transport connected');
                 break;
             case 'failed':
@@ -193,7 +183,6 @@ const onProducerTransport = async (data) => {
     } */
     let stream;
     try {
-        console.log("stream:::::", testVideo.getMediaStreamTrack());
         const track = testVideo.getMediaStreamTrack();
         stream = new MediaStream();
         stream.addTrack(track);
@@ -231,7 +220,6 @@ const onConsumerTransport = async (data) => {
                 console.log('Consumer transport connected');
                 remoteVideo.srcObject = remoteStream;
                 testAudio.play()
-                // remoteStream.play(remoteVideo)
                 const message = {
                     type: 'resume'
                 }
@@ -251,7 +239,6 @@ const onConsumerTransport = async (data) => {
 
 const onConsumed = async (data) => {
     const { producerId, id, kind, rtpParameters } = data;
-    console.log("id:::::", id);
     const consumer = await consumerTransport.consume({
         id,
         producerId,
@@ -259,13 +246,9 @@ const onConsumed = async (data) => {
         rtpParameters,
     });
 
-    console.log(`Consumer track: ${consumer.track}`)
-
     const stream = new MediaStream();
     stream.addTrack(consumer.track);
-
     remoteStream = stream;
-    // remoteStream = consumer.track;
 }
 
 const consume = async () => {
