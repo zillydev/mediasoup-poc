@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mediasoup Video App</title>
+</head>
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
+    <script>eruda.init();</script>
+    <div id="videos">
+        <video id="localVideo" autoplay playsinline></video>
+        <video id="remoteVideo" autoplay playsinline></video>
+    </div>
+
+    <div id="buttons">
+        <button id="startButton">Start</button>
+        <button id="subscribeButton">Subscribe</button>
+    </div>
+
+    <script src="AgoraRTC_N-4.20.1.js"></script>
+    <script src="app-bundle.js"></script>
+</body>
+</html>

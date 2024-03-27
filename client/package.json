@@ -1,0 +1,17 @@
+{
+  "name": "client",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "scripts": {
+    "start": "browserify ./src/main.js -o ./src/app-bundle.js && live-server ./src"
+  },
+  "devDependencies": {
+    "browserify": "^17.0.0",
+    "live-server": "^1.2.2"
+  },
+  "dependencies": {
+    "mediasoup-client": "^3.7.6",
+    "uuid": "^9.0.1"
+  }
+}
