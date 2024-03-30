@@ -3,11 +3,11 @@ import { Worker } from 'mediasoup/node/lib/types';
 
 import { config } from '../config';
 
-const worker: Array<{
-    worker: Worker,
-}> = [];
+// const worker: Array<{
+//     worker: Worker,
+// }> = [];
 
-let nextMediasoupWorkerIdx = 0;
+// let nextMediasoupWorkerIdx = 0;
 
 const createRouter = async () => {
     const worker = await mediasoup.createWorker({
