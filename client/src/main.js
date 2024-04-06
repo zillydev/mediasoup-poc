@@ -1,12 +1,15 @@
 const mediasoup = require('mediasoup-client');
 
-const websocketURL = 'ws://localhost:8000/ws';
+const DEVICE_IP = require('./config');
+
+const websocketURL = `ws://${DEVICE_IP}:8000/ws`;
+
+const userId = crypto.randomUUID();
 
 let socket, device;
 let subscribeButton;
 
-let consumerTransport;
-let videoElement, audioElement;
+let recvTransport;
 
 document.addEventListener('DOMContentLoaded', async () => {
     videoElement = document.getElementById('video');
@@ -34,15 +37,20 @@ const createSocketConnection = () => {
         console.log('Received message:', message);
 
         switch (message.type) {
-            case 'routerRtpCapabilities':
-                onRouterRtpCapabilities(message.data);
+            case 'getRouterRtpCapabilities':
+                getRouterRtpCapabilities(message.data);
                 break;
-            case 'consumerTransport':
-                onConsumerTransport(message.data);
+            case 'createConsumerTransport':
+                createConsumerTransport(message.data);
                 break;
-            case 'consumed':
-                onConsumed(message.data);
+            case 'consumeProducer':
+                consumeProducer(message.data);
                 break;
+            case 'producerCreated':
+                onProducerCreated(message.data);
+                break;
+            /* case 'producerPaused':
+                onProducerPaused(message.data); */
             default:
                 break;
         }
@@ -53,7 +61,7 @@ const createSocketConnection = () => {
     };
 }
 
-const onRouterRtpCapabilities = async (routerRtpCapabilities) => {
+const getRouterRtpCapabilities = async (routerRtpCapabilities) => {
     device = new mediasoup.Device();
     await device.load({ routerRtpCapabilities });
 }
@@ -62,23 +70,23 @@ const onRouterRtpCapabilities = async (routerRtpCapabilities) => {
 async function subscribe() {
     const message = {
         type: 'createConsumerTransport',
+        userId,
         forceTcp: false,
     }
-
     socket.send(JSON.stringify(message));
 }
 
 // When the consumer transport is created, connect to it, and send a message to consume the audio and video tracks
-const onConsumerTransport = async (data) => {
-    consumerTransport = device.createRecvTransport(data);
-    consumerTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
+const createConsumerTransport = async (data) => {
+    recvTransport = device.createRecvTransport(data);
+    recvTransport.on('connect', async ({ dtlsParameters }, callback, errback) => {
         const message = {
             type: 'connectConsumerTransport',
-            transportId: consumerTransport.id,
+            userId,
             dtlsParameters,
         }
-
         socket.send(JSON.stringify(message));
+
         socket.addEventListener('message', async (event) => {
             const message = JSON.parse(event.data);
             if (message.type === 'consumerTransportConnected') {
@@ -87,7 +95,7 @@ const onConsumerTransport = async (data) => {
         });
     });
 
-    consumerTransport.on('connectionstatechange', (state) => {
+    recvTransport.on('connectionstatechange', (state) => {
         switch (state) {
             case 'connecting':
                 console.log('Consumer transport connecting');
@@ -96,7 +104,7 @@ const onConsumerTransport = async (data) => {
                 console.log('Consumer transport connected');
                 break;
             case 'failed':
-                consumerTransport.close();
+                recvTransport.close();
                 console.log('Consumer transport failed');
                 break;
             default:
@@ -105,35 +113,79 @@ const onConsumerTransport = async (data) => {
     });
 
     const message = {
-        type: 'consume',
+        type: 'consumeAllProducers',
+        userId,
         rtpCapabilities: device.rtpCapabilities,
     }
     socket.send(JSON.stringify(message));
 }
 
 // When the audio and video tracks are consumed, play them in the browser
-const onConsumed = async (data) => {
-    const { producerId, id, kind, rtpParameters } = data;
-    const consumer = await consumerTransport.consume({
+const consumeProducer = async (data) => {
+    const { producerUserId, producerId, id, kind, rtpParameters } = data;
+    const consumer = await recvTransport.consume({
         id,
         producerId,
         kind,
         rtpParameters,
     });
 
+    // consumer.on('transportclose', () => {
+    //     const message = {
+    //         type: 'closeConsumer',
+    //         id: consumer.id
+    //     }
+    //     console.log("here");
+    //     socket.send(JSON.stringify(message));
+    // });
+    
+    let cont = document.getElementById(producerUserId);
+    if (cont === null) {
+        cont = document.createElement('div');
+        cont.id = producerUserId;
+    }
     if (kind === 'video') {
         const videoTrack = consumer.track;
-        videoElement.srcObject = new MediaStream([videoTrack]);
+        // videoElement.srcObject = new MediaStream([videoTrack]);
+        let video = document.createElement('video');
+        video.srcObject = new MediaStream([videoTrack]);
+        video.autoplay = true;
+        video.playsinline = true;
+        cont.appendChild(video);
         const message = {
-            type: 'resume',
+            type: 'resumeConsumer',
             id: consumer.id,
+            userId
         }
         socket.send(JSON.stringify(message));
     } else {
         const audioTrack = consumer.track;
-        audioElement.srcObject = new MediaStream([audioTrack]);
+        // audioElement.srcObject = new MediaStream([audioTrack]);
+        let audio = document.createElement('audio');
+        audio.srcObject = new MediaStream([audioTrack]);
+        audio.autoplay = true;
+        audio.playsinline = true;
+        cont.appendChild(audio);
     }
+    document.getElementById('videos').appendChild(cont);
     // More tracks can be consumed here, like screen sharing or additional audio tracks
 }
 
+const onProducerCreated = (data) => {
+    const message = {
+        type: 'consumeProducer',
+        userId,
+        producerUserId: data.producerUserId,
+        producerId: data.producerId,
+        rtpCapabilities: device.rtpCapabilities,
+    }
+    socket.send(JSON.stringify(message));
+}
+
 createSocketConnection();
+
+// Close the receive transport when the window is closed
+window.onunload = () => {
+    // Triggers a "transportclose" event in all its producers and consumers
+    recvTransport.close();
+}

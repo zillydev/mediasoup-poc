@@ -43,8 +43,8 @@ export const config = {
         webRtcTransport: {
             listenIps: [
                 {
-                    ip: '0.0.0.0',
-                    announcedIp: '127.0.0.1',
+                    // Change to device's IP address
+                    ip: '127.0.0.1',
                 },
             ] as TransportListenInfo[],
             maxIncomingBitrate: 1500000,
