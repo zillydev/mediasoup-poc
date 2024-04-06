@@ -64,6 +64,8 @@ const getRouterRtpCapabilities = async (routerRtpCapabilities) => {
 
 // When a user publishes a track
 let handleUserTrackPublished = async (user, mediaType) => {
+    console.log('Track published');
+
     // Subscribe to the user's published track
     await client.subscribe(user, mediaType);
     let subscriptionsArray = client._p2pChannel.store.state.keyMetrics.subscribe;
@@ -78,18 +80,20 @@ let handleUserTrackPublished = async (user, mediaType) => {
 
     let index = subscriptionsArray.findIndex(obj => obj.userId === user.uid && obj.type === mediaType);
     subscriptionsArray[index]['producerId'] = producerId;
-    // console.log(client);
 }
 
 // When a user unpublishes a track
 let handleUserTrackUnpublished = async (user, mediaType) => {
-    console.log(client._p2pChannel);
+    console.log('Track unpublished');
+
+    let subscriptionsArray = client._p2pChannel.store.state.keyMetrics.subscribe;
     let obj = subscriptionsArray.find(obj => obj.userId === user.uid && obj.type === mediaType);
     await client.unsubscribe(user, mediaType);
     const message = {
         type: 'pauseProducer',
         producerUserId: user.uid,
-        producerId: obj.producerId
+        producerId: obj.producerId,
+        from: "agora client"
     }
     socket.send(JSON.stringify(message));
 }

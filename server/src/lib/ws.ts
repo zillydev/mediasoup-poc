@@ -64,8 +64,10 @@ const websocketconnection = async (websock: WebSocket.Server) => {
                     break;
                 case 'consumeProducer':
                     consumeProducer(ws, event);
+                    break;
                 case 'pauseProducer':
                     pauseProducer(ws, event);
+                    break;
                 default:
                     break;
             }
@@ -164,7 +166,6 @@ const pauseProducer = async (ws: WebSocket, event: any) => {
     for (const client of clients) {
         const consumer = client.consumers.find(c => c.producerId === producer.id);
         await consumer.pause();
-        console.log(`${consumer.id} paused`);
     }
 }
 
