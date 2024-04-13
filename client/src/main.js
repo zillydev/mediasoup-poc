@@ -9,6 +9,7 @@ const userId = crypto.randomUUID();
 let socket, device;
 let subscribeButton;
 
+let consumers = [];
 let recvTransport;
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -49,8 +50,12 @@ const createSocketConnection = () => {
             case 'producerCreated':
                 onProducerCreated(message.data);
                 break;
-            /* case 'producerPaused':
-                onProducerPaused(message.data); */
+            case 'producerPaused':
+                onProducerPaused(message.data);
+                break;
+            case 'producerResumed':
+                onProducerResumed(message.data);
+                break;
             default:
                 break;
         }
@@ -129,15 +134,15 @@ const consumeProducer = async (data) => {
         kind,
         rtpParameters,
     });
+    consumers.push(consumer);
 
-    // consumer.on('transportclose', () => {
-    //     const message = {
-    //         type: 'closeConsumer',
-    //         id: consumer.id
-    //     }
-    //     console.log("here");
-    //     socket.send(JSON.stringify(message));
-    // });
+    consumer.on('transportclose', () => {
+        const message = {
+            type: 'closeConsumerTransport',
+            id: recvTransport.id
+        }
+        socket.send(JSON.stringify(message));
+    });
     
     let cont = document.getElementById(producerUserId);
     if (cont === null) {
@@ -148,6 +153,7 @@ const consumeProducer = async (data) => {
         const videoTrack = consumer.track;
         // videoElement.srcObject = new MediaStream([videoTrack]);
         let video = document.createElement('video');
+        video.id = consumer.id;
         video.srcObject = new MediaStream([videoTrack]);
         video.autoplay = true;
         video.playsinline = true;
@@ -162,6 +168,7 @@ const consumeProducer = async (data) => {
         const audioTrack = consumer.track;
         // audioElement.srcObject = new MediaStream([audioTrack]);
         let audio = document.createElement('audio');
+        audio.id = consumer.id;
         audio.srcObject = new MediaStream([audioTrack]);
         audio.autoplay = true;
         audio.playsinline = true;
@@ -180,6 +187,19 @@ const onProducerCreated = (data) => {
         rtpCapabilities: device.rtpCapabilities,
     }
     socket.send(JSON.stringify(message));
+}
+
+const onProducerPaused = (data) => {
+    if (consumers.find(c => c.id === data)) {
+        document.getElementById(data).srcObject = null;
+    }
+}
+
+const onProducerResumed = (data) => {
+    let consumer = consumers.find(c => c.id === data);
+    if (consumer) {
+        document.getElementById(data).srcObject = new MediaStream([consumer.track]);
+    }
 }
 
 createSocketConnection();

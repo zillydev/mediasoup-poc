@@ -66,20 +66,28 @@ const getRouterRtpCapabilities = async (routerRtpCapabilities) => {
 let handleUserTrackPublished = async (user, mediaType) => {
     console.log('Track published');
 
-    // Subscribe to the user's published track
     await client.subscribe(user, mediaType);
     let subscriptionsArray = client._p2pChannel.store.state.keyMetrics.subscribe;
-    
-    // Create a local producer for the subscribed track
-    let producerId = crypto.randomUUID();
-    await sendTransport.produce({ 
-        id: producerId, 
-        track: user[`${mediaType}Track`].getMediaStreamTrack(), 
-        appData: { producerId, userId: user.uid}
-    });
+    console.log(subscriptionsArray);
+    let subscription = subscriptionsArray.find(obj => obj.userId === user.uid && obj.type === mediaType);
+    if (subscription.producerId !== undefined) {
+        const message = {
+            type: 'resumeProducer',
+            producerUserId: user.uid,
+            producerId: subscription.producerId
+        }
+        socket.send(JSON.stringify(message));
+    } else {
+        // Create a local producer for the subscribed track
+        let producerId = crypto.randomUUID();
+        await sendTransport.produce({ 
+            id: producerId, 
+            track: user[`${mediaType}Track`].getMediaStreamTrack(), 
+            appData: { producerId, userId: user.uid}
+        });
 
-    let index = subscriptionsArray.findIndex(obj => obj.userId === user.uid && obj.type === mediaType);
-    subscriptionsArray[index]['producerId'] = producerId;
+        subscription.producerId = producerId;
+    }
 }
 
 // When a user unpublishes a track
@@ -87,15 +95,24 @@ let handleUserTrackUnpublished = async (user, mediaType) => {
     console.log('Track unpublished');
 
     let subscriptionsArray = client._p2pChannel.store.state.keyMetrics.subscribe;
-    let obj = subscriptionsArray.find(obj => obj.userId === user.uid && obj.type === mediaType);
+    console.log(subscriptionsArray);
+    let object = subscriptionsArray.find(obj => obj.userId === user.uid && obj.type === mediaType);
     await client.unsubscribe(user, mediaType);
     const message = {
         type: 'pauseProducer',
         producerUserId: user.uid,
-        producerId: obj.producerId,
-        from: "agora client"
+        producerId: object.producerId
     }
     socket.send(JSON.stringify(message));
+}
+
+let handleUserLeft = async (user, reason) => {
+    const message = {
+        type: 'closeProducerTransport',
+        id: sendTransport.id
+    }
+
+    //TODO
 }
 
 // When the producer transport is created
@@ -163,15 +180,16 @@ const createProducerTransport = async (transportParams) => {
     // client.on('user-left', handleUserLeft);
     client.on('user-published', handleUserTrackPublished);
     client.on('user-unpublished', handleUserTrackUnpublished);
+    client.on('user-left', handleUserLeft);
     client.join(APP_ID, CHANNEL, TOKEN, null);
 }
 
 createSocketConnection();
 
-// Close the producer transport and leave the channel when the window is closed
+/* // Close the producer transport and leave the channel when the window is closed
 window.onunload = () => {
     client.leave();
     // Triggers a "transportclose" event in all its producers and consumers
     sendTransport.close();
     socket.send(JSON.stringify({ type: 'closeProducerTransport', id: sendTransport.id}));
-}
+} */

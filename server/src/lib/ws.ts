@@ -43,10 +43,10 @@ const websocketconnection = async (websock: WebSocket.Server) => {
                 case 'connectProducerTransport':
                     connectProducerTransport(ws, event);
                     break;
-                case 'closeProducerTransport':
+                /* case 'closeProducerTransport':
                     // producerTransport.close();
                     closeProducerTransport(event.id);
-                    break;
+                    break; */
                 case 'createProducer':
                     createProducer(websock, ws, event);
                     break;
@@ -55,6 +55,9 @@ const websocketconnection = async (websock: WebSocket.Server) => {
                     break;
                 case 'connectConsumerTransport':
                     connectConsumerTransport(ws, event);
+                    break;
+                case 'closeConsumerTransport':
+                    closeConsumerTransport(ws, event);
                     break;
                 case 'resumeConsumer':
                     resumeConsumer(event);
@@ -66,7 +69,10 @@ const websocketconnection = async (websock: WebSocket.Server) => {
                     consumeProducer(ws, event);
                     break;
                 case 'pauseProducer':
-                    pauseProducer(ws, event);
+                    pauseProducer(websock, ws, event);
+                    break;
+                case 'resumeProducer':
+                    resumeProducer(websock, ws, event);
                     break;
                 default:
                     break;
@@ -142,6 +148,10 @@ const connectConsumerTransport = async (ws: WebSocket, event: any) => {
     send(ws, 'consumerTransportConnected', 'consumer transport connected');
 }
 
+const closeConsumerTransport = async (ws: WebSocket, event: any) => {
+    clients.filter(client => client.consumerTransport.id !== event.id);
+}
+
 // Consume all available producers
 const consumeAllProducers = async (ws: WebSocket, event: any) => {
     for (const host of hosts) {
@@ -160,12 +170,23 @@ const consumeProducer = async (ws: WebSocket, event: any) => {
 }
 
 // Pause producer
-const pauseProducer = async (ws: WebSocket, event: any) => {
+const pauseProducer = async (websock: WebSocket.Server, ws: WebSocket, event: any) => {
     let host = hosts.find(host => host.userId === event.producerUserId);
     let producer = host.producers.find(p => p.id === event.producerId);
     for (const client of clients) {
         const consumer = client.consumers.find(c => c.producerId === producer.id);
         await consumer.pause();
+        broadcast(websock, 'producerPaused', consumer.id);
+    }
+}
+
+const resumeProducer = async (websock: WebSocket.Server, ws: WebSocket, event: any) => {
+    let host = hosts.find(host => host.userId === event.producerUserId);
+    let producer = host.producers.find(p => p.id === event.producerId);
+    for (const client of clients) {
+        const consumer = client.consumers.find(c => c.producerId === producer.id);
+        await consumer.resume();
+        broadcast(websock, 'producerResumed', consumer.id);
     }
 }
 
