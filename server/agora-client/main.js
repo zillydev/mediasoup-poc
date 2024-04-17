@@ -6,8 +6,6 @@ const { APP_ID, CHANNEL, TOKEN } = require('./config.js');
 
 const client = AgoraRTC.createClient({mode:'rtc', codec:'vp8'});
 
-let numberOfProducers = 0;
-
 let socket, device;
 let sendTransport;
 

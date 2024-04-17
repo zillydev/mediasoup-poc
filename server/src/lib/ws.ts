@@ -3,6 +3,21 @@ import { createRouter } from './worker';
 import { Consumer, Producer, Router, Transport } from 'mediasoup/node/lib/types';
 import { createWebRtcTransport } from './createWebRtcTransport';
 import { RtpCapabilities } from 'mediasoup-client/lib/RtpParameters';
+import AgoraRTC, { IAgoraRTCClient } from 'agora-rtc-sdk-ng';
+
+/* async function lazyModule(loader) {
+    try {
+        const module = await loader();
+        return module;
+    } catch (error) {
+        console.error('DynamicImportError: Failed to lazy load', error);
+        throw error;
+    }
+}
+
+function fetchRTCSdk() {
+    return lazyModule(() => import('agora-rtc-sdk-ng'));
+} */
 
 let mediasoupRouter: Router;
 let producerTransport: Transport;
@@ -22,6 +37,8 @@ let hosts: Host[] = [];
 let clients: Client[] = [];
 
 const websocketconnection = async (websock: WebSocket.Server) => {
+    // const AgoraRTC = await fetchRTCSdk();
+    // const client: IAgoraRTCClient = AgoraRTC.createClient({mode:'rtc', codec:'vp8'});
     try {
         mediasoupRouter = await createRouter();
     } catch (error) {
@@ -125,9 +142,9 @@ const createProducer = async (websock: WebSocket.Server, ws: WebSocket, event: a
     broadcast(websock, 'producerCreated', { producerUserId: userId, producerId: producer.id });
 }
 
-const closeProducerTransport = (id: string) => {
+/* const closeProducerTransport = (id: string) => {
     producerTransport.close();
-}
+} */
 
 // Create consumer transport
 const createConsumerTransport = async (ws: WebSocket, event: any) => {
@@ -148,16 +165,21 @@ const connectConsumerTransport = async (ws: WebSocket, event: any) => {
     send(ws, 'consumerTransportConnected', 'consumer transport connected');
 }
 
+// Close consumer transport
 const closeConsumerTransport = async (ws: WebSocket, event: any) => {
     clients.filter(client => client.consumerTransport.id !== event.id);
 }
 
 // Consume all available producers
 const consumeAllProducers = async (ws: WebSocket, event: any) => {
-    for (const host of hosts) {
-        for (const producer of host.producers) {
-            const res = await createConsumer(producer, event.rtpCapabilities, event.userId);
-            send(ws, 'consumeProducer', res);
+    if (hosts.length === 0) {
+        send(ws, 'noProducers', 'No producers');
+    } else {
+        for (const host of hosts) {
+            for (const producer of host.producers) {
+                const res = await createConsumer(producer, event.rtpCapabilities, event.userId);
+                send(ws, 'consumeProducer', res);
+            }
         }
     }
 }

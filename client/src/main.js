@@ -9,12 +9,12 @@ const userId = crypto.randomUUID();
 let socket, device;
 let subscribeButton;
 
+let time;
+
 let consumers = [];
 let recvTransport;
 
 document.addEventListener('DOMContentLoaded', async () => {
-    videoElement = document.getElementById('video');
-    audioElement = document.getElementById('audio');
     subscribeButton = document.getElementById('subscribeButton');
     subscribeButton.addEventListener('click', subscribe);
 });
@@ -47,6 +47,9 @@ const createSocketConnection = () => {
             case 'consumeProducer':
                 consumeProducer(message.data);
                 break;
+            case 'noProducers':
+                onNoProducers();
+                break;
             case 'producerCreated':
                 onProducerCreated(message.data);
                 break;
@@ -73,6 +76,7 @@ const getRouterRtpCapabilities = async (routerRtpCapabilities) => {
 
 // Send a message to create a consumer transport
 async function subscribe() {
+    time = Date.now();
     const message = {
         type: 'createConsumerTransport',
         userId,
@@ -174,11 +178,18 @@ const consumeProducer = async (data) => {
         audio.playsinline = true;
         cont.appendChild(audio);
     }
+
+    console.log(`${kind}, ${Date.now() - time}`);
     document.getElementById('videos').appendChild(cont);
     // More tracks can be consumed here, like screen sharing or additional audio tracks
 }
 
+const onNoProducers = () => {
+    document.getElementById('msg').innerHTML = "Waiting for host to join";
+}
+
 const onProducerCreated = (data) => {
+    document.getElementById('msg').innerHTML = "";
     const message = {
         type: 'consumeProducer',
         userId,
@@ -202,10 +213,28 @@ const onProducerResumed = (data) => {
     }
 }
 
+// // Start the latency test
+// const startLatencyTest = () => {
+//     const pingTime = Date.now();
+//     const pingMessage = {
+//         type: 'ping'
+//     };
+//     socket.send(JSON.stringify(pingMessage));
+
+//     socket.onmessage = (event) => {
+//         const message = JSON.parse(event.data);
+//         if (message.type === 'ping') {
+//             const latency = Date.now() - pingTime;
+//             console.log('Latency:', latency, 'ms');
+//         }
+//     };
+// }
+
 createSocketConnection();
 
 // Close the receive transport when the window is closed
-window.onunload = () => {
+window.addEventListener('beforeunload', () => {
     // Triggers a "transportclose" event in all its producers and consumers
     recvTransport.close();
-}
+    socket.send(JSON.stringify({ type: 'closeProducerTransport', id: recvTransport.id}));
+});
