@@ -9,6 +9,26 @@ const client = AgoraRTC.createClient({mode:'rtc', codec:'vp8'});
 let socket, device;
 let sendTransport;
 
+let previousTimestamp = null;
+
+const calculateLatency = (stats) => {
+    if (previousTimestamp === null) {
+        previousTimestamp = stats.timestamp;
+        return 0;
+    }
+
+    const latency = stats.timestamp - previousTimestamp;
+    previousTimestamp = stats.timestamp;
+
+    return latency;
+}
+
+const latencyTest = async () => {
+    const stats = await webRtcTransport.getStats();
+    const latency = calculateLatency(stats[0]);
+    console.log(`Latency: ${latency} ms`);
+}
+
 // Create a WebSocket connection to the server
 const createSocketConnection = () => {
     socket = new WebSocket(websocketURL);
@@ -132,6 +152,8 @@ const createProducerTransport = async (transportParams) => {
             const message = JSON.parse(event.data);
             if (message.type === 'producerTransportConnected') {
                 callback();
+                // Start the latency test every 2 minutes
+                setInterval(latencyTest, 2 * 60 * 1000);
             }
         });
     });
