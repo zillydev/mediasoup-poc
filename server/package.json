@@ -12,7 +12,8 @@
     "express": "^4.19.2",
     "mediasoup": "^3.13.24",
     "mediasoup-client": "^3.7.6",
-    "ws": "^8.16.0"
+    "ws": "^8.16.0",
+    "yarn": "^1.22.22"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",
