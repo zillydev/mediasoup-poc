@@ -1,6 +1,11 @@
 {
     "compilerOptions": {
-        // Other compiler options...
-        "esModuleInterop": true
-    }
-}
+      "target": "ES2020",
+      "module": "CommonJS",
+      "moduleDetection": "force",
+      "esModuleInterop": true,
+      "skipLibCheck": true,
+      "outDir": "./dist",
+    },
+    "include": ["agora-ts-client/**/*", "puppeteerScript.ts"]
+  }

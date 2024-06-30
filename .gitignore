@@ -1,2 +1,5 @@
 app-bundle.js
 node_modules/
+dist/
+.parcel-cache/
+package-lock.json
